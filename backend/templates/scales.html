@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block body %}
+<h2>母叶比例尺</h2>
+
+<form method="get" action="{{ url_for('scales') }}">
+  <input name="lot" value="{{ lot }}" placeholder="输入批次名查询当前占比" required />
+  <button>查询</button>
+</form>
+
+{% if lot %}
+  {% if current %}
+  <h3>批次「{{ lot }}」当前占比</h3>
+  <table>
+    <thead><tr><th>母叶</th><th>占比（%）</th></tr></thead>
+    <tbody>
+      {% for item in current.items %}
+      <tr><td>{{ item.leaf }}</td><td>{{ item.percent }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if can_write %}
+  <form method="post" action="{{ url_for('delete_scale', scale_id=current.id) }}">
+    <button type="submit">删除该比例尺</button>
+  </form>
+  {% endif %}
+  {% else %}
+  <p>批次「{{ lot }}」尚未登记比例尺。</p>
+  {% endif %}
+{% endif %}
+
+<h3>已生效的比例尺</h3>
+{% if scales %}
+<table>
+  <thead><tr><th>批次</th><th>母叶占比</th></tr></thead>
+  <tbody>
+    {% for scale in scales %}
+    <tr>
+      <td><a href="{{ url_for('scales', lot=scale.lot) }}">{{ scale.lot }}</a></td>
+      <td>
+        {% for item in scale.items %}{{ item.leaf }} {{ item.percent }}%{% if not loop.last %}、{% endif %}{% endfor %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p>暂无已生效的比例尺。</p>
+{% endif %}
+
+{% if can_write %}
+<form method="post" action="{{ url_for('save_scale') }}">
+  <h3>登记 / 更新比例尺</h3>
+  <p>全部占比相加必须正好 100；同批次重复登记会覆盖旧占比，旧审评行的加权分不受影响。</p>
+  <input name="lot" placeholder="批次" value="{{ lot }}" required />
+  <div id="scale-rows">
+    {% for i in range(4) %}
+    <div class="scale-row">
+      <input name="leaf" placeholder="母叶名" />
+      <input name="percent" type="number" step="0.01" min="0" max="100" placeholder="占比%" />
+    </div>
+    {% endfor %}
+  </div>
+  <button type="button" id="add-row">加一行</button>
+  <button type="submit">保存</button>
+</form>
+<script>
+  document.getElementById("add-row").addEventListener("click", () => {
+    const rows = document.getElementById("scale-rows");
+    const row = rows.querySelector(".scale-row").cloneNode(true);
+    row.querySelectorAll("input").forEach((el) => { el.value = ""; });
+    rows.appendChild(row);
+  });
+</script>
+{% endif %}
+{% endblock %}

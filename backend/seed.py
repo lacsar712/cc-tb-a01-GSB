@@ -33,6 +33,21 @@ def main():
             created_by text NOT NULL
         )"""
     )
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS ratio_scales (
+            id serial PRIMARY KEY,
+            lot text NOT NULL UNIQUE,
+            created_by text NOT NULL
+        )"""
+    )
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS ratio_items (
+            id serial PRIMARY KEY,
+            scale_id integer NOT NULL REFERENCES ratio_scales(id) ON DELETE CASCADE,
+            leaf text NOT NULL,
+            percent numeric NOT NULL
+        )"""
+    )
     cur.execute("SELECT COUNT(*) FROM cuppings")
     if cur.fetchone()[0] == 0:
         for lot, aroma, taste, liquor in (("春茶-A", 8, 8, 7), ("夏茶-C", 5, 4, 6)):
