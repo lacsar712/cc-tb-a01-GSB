@@ -33,6 +33,24 @@ def main():
             created_by text NOT NULL
         )"""
     )
+    # 母叶比例尺：一批一条，生效后该批才可交审评
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS blend_scales (
+            id serial PRIMARY KEY,
+            lot text NOT NULL UNIQUE,
+            created_by text NOT NULL,
+            created_at timestamptz NOT NULL DEFAULT now()
+        )"""
+    )
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS blend_leaves (
+            id serial PRIMARY KEY,
+            scale_id integer NOT NULL REFERENCES blend_scales(id) ON DELETE CASCADE,
+            leaf text NOT NULL,
+            percent numeric(5,2) NOT NULL CHECK (percent > 0 AND percent <= 100),
+            UNIQUE (scale_id, leaf)
+        )"""
+    )
     cur.execute("SELECT COUNT(*) FROM cuppings")
     if cur.fetchone()[0] == 0:
         for lot, aroma, taste, liquor in (("春茶-A", 8, 8, 7), ("夏茶-C", 5, 4, 6)):

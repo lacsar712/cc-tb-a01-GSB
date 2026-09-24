@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block body %}
+<h2>母叶比例尺</h2>
+{% if error %}<p class="fail">{{ error }}</p>{% endif %}
+
+<form method="get" action="{{ url_for('scales') }}">
+  <label>按批次查询：
+    <select name="lot">
+      <option value="">— 选择批次 —</option>
+      {% for lot in lots %}
+      <option value="{{ lot }}" {% if lot == selected %}selected{% endif %}>{{ lot }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <button>查当前占比表</button>
+</form>
+
+{% if selected and not scale %}
+<p class="fail">批次 {{ selected }} 还没有生效的比例尺。</p>
+{% endif %}
+
+{% if scale %}
+<section>
+  <h3>批次 {{ scale.lot }} 的当前占比表</h3>
+  <p>登记人：{{ scale.created_by }}</p>
+  <table>
+    <thead><tr><th>母叶</th><th>占比（%）</th></tr></thead>
+    <tbody>
+      {% for leaf, percent in scale.leaves %}
+      <tr><td>{{ leaf }}</td><td>{{ '%g'|format(percent) }}</td></tr>
+      {% endfor %}
+    </tbody>
+    <tfoot><tr><th>合计</th><th>100</th></tr></tfoot>
+  </table>
+  {% if not can_write %}<p>观察员只能查看，不能修改占比。</p>{% endif %}
+</section>
+
+{% if can_write %}
+<form method="post" action="{{ url_for('update_scale') }}">
+  <h3>修改占比</h3>
+  <input type="hidden" name="lot" value="{{ scale.lot }}" />
+  <div class="leaf-rows">
+    {% for leaf, percent in scale.leaves %}
+    <div class="leaf-row">
+      <input name="leaf" value="{{ leaf }}" placeholder="母叶名" required />
+      <input name="percent" class="percent" type="number" step="0.01" min="0.01" max="100"
+             value="{{ '%g'|format(percent) }}" placeholder="占比" required />
+    </div>
+    {% endfor %}
+  </div>
+  <button type="button" data-add-leaf>加一种母叶</button>
+  <span>合计：<span class="sum">100</span></span>
+  <p class="fail">注意：改占比不影响已交审评行的加权分，旧分照旧保留。</p>
+  <button>保存修改</button>
+</form>
+<form method="post" action="{{ url_for('delete_scale') }}"
+      onsubmit="return confirm('删掉比例尺后该批将无法交审评，确认删除？');">
+  <input type="hidden" name="lot" value="{{ scale.lot }}" />
+  <button>删除该比例尺</button>
+</form>
+{% endif %}
+{% endif %}
+
+{% if can_write %}
+<form method="post" action="{{ url_for('register_scale') }}">
+  <h3>登记新批次比例尺</h3>
+  <input name="lot" placeholder="批次名" {% if selected and not scale %}value="{{ selected }}"{% endif %} required />
+  <div class="leaf-rows">
+    <div class="leaf-row">
+      <input name="leaf" placeholder="母叶名" required />
+      <input name="percent" class="percent" type="number" step="0.01" min="0.01" max="100" placeholder="占比" required />
+    </div>
+    <div class="leaf-row">
+      <input name="leaf" placeholder="母叶名" required />
+      <input name="percent" class="percent" type="number" step="0.01" min="0.01" max="100" placeholder="占比" required />
+    </div>
+  </div>
+  <button type="button" data-add-leaf>加一种母叶</button>
+  <span>合计：<span class="sum">0</span>（必须正好 100 才能生效）</span>
+  <button>登记比例尺</button>
+</form>
+{% endif %}
+
+<script>
+  document.addEventListener("click", (event) => {
+    if (!event.target.matches("[data-add-leaf]")) return;
+    const form = event.target.closest("form");
+    const wrapper = form.querySelector(".leaf-rows");
+    const line = document.createElement("div");
+    line.className = "leaf-row";
+    line.innerHTML =
+      '<input name="leaf" placeholder="母叶名" required /> ' +
+      '<input name="percent" class="percent" type="number" step="0.01" min="0.01" max="100" placeholder="占比" required /> ' +
+      '<button type="button" data-remove-leaf>移除</button>';
+    wrapper.appendChild(line);
+  });
+  document.addEventListener("click", (event) => {
+    if (event.target.matches("[data-remove-leaf]")) event.target.closest(".leaf-row").remove();
+  });
+  function refreshSums() {
+    document.querySelectorAll("form").forEach((form) => {
+      const sumEl = form.querySelector(".sum");
+      if (!sumEl) return;
+      let total = 0;
+      form.querySelectorAll(".percent").forEach((input) => {
+        total += parseFloat(input.value) || 0;
+      });
+      sumEl.textContent = Math.round(total * 100) / 100;
+    });
+  }
+  document.addEventListener("input", refreshSums);
+  refreshSums();
+</script>
+{% endblock %}
